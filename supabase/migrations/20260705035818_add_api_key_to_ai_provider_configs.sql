@@ -1,0 +1,1 @@
+ALTER TABLE ai_provider_configs ADD COLUMN IF NOT EXISTS api_key text;
