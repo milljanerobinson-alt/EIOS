@@ -1,0 +1,123 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html { scroll-behavior: smooth; }
+body { @apply bg-slate-50 text-slate-900 antialiased; }
+
+/* ─── Brand shimmer animation for "Automate" ────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(40px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-12px) rotate(2deg); }
+}
+@keyframes pulse-ring {
+  0%   { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+.animate-fade-up   { animation: fade-up 0.7s ease-out both; }
+.animate-fade-in   { animation: fade-in 0.5s ease-out both; }
+.animate-slide-up  { animation: slide-up 0.6s ease-out both; }
+.animate-float-slow { animation: float-slow 6s ease-in-out infinite; }
+.animate-pulse-ring { animation: pulse-ring 2.5s ease-out infinite; }
+
+/* Illuminated shimmer — subtle, premium, applied only to "Automate" */
+.shimmer-text {
+  background: linear-gradient(
+    90deg,
+    #7c3aed 0%,
+    #c4b5fd 20%,
+    #ffffff 40%,
+    #c4b5fd 60%,
+    #7c3aed 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 5s linear infinite;
+}
+
+/* ─── Reusable component classes ───────────────────────────────────────────── */
+@layer components {
+  .input {
+    @apply w-full px-3.5 py-2.5 rounded-lg border border-slate-300 bg-white text-sm text-slate-900 placeholder-slate-400
+           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors;
+  }
+  .input-eios {
+    @apply w-full px-3.5 py-2.5 rounded-lg border border-slate-300 bg-white text-sm text-slate-900 placeholder-slate-400
+           focus:outline-none transition-colors;
+  }
+  .input-eios:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px #3b82f6;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm
+           transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn bg-primary-600 text-white hover:bg-primary-700 shadow-sm shadow-primary-600/20;
+  }
+  .btn-eios {
+    @apply btn text-white shadow-sm transition-colors;
+    background-color: #2563eb;
+  }
+  .btn-eios:hover {
+    background-color: #1d4ed8;
+  }
+  .btn-eios:disabled {
+    opacity: 0.5;
+  }
+  .btn-secondary {
+    @apply btn bg-white text-slate-700 border border-slate-300 hover:bg-slate-50;
+  }
+  .btn-ghost {
+    @apply btn text-slate-600 hover:bg-slate-100;
+  }
+  .card {
+    @apply bg-white rounded-xl border border-slate-200 shadow-sm;
+  }
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+}
+
+/* ─── Canonical Scroll Architecture (EWO-027R.X) ──────────────────────────────
+   The platform uses a single scroll model:
+   1. Root shell (html/body/#root): height:100%, no overflow — fills viewport.
+   2. Layout shells (h-screen overflow-hidden): lock the viewport, no body scroll.
+   3. Content containers (flex-1 overflow-y-auto): the single scroll region per view.
+   4. Pages needing internal scroll regions use .scroll-surface on their root,
+      which opts into h-full overflow-hidden and manages scroll internally.
+
+   Rule: exactly ONE scroll container per view path. Never nest two overflow-y-auto
+   containers — the outermost content container is the scroll surface unless the
+   page explicitly opts into .scroll-surface.
+   ──────────────────────────────────────────────────────────────────────────── */
+html, body, #root { height: 100%; }
+.scroll-surface { height: 100%; overflow: hidden; }
+
+/* ─── Scrollbar ─────────────────────────────────────────────────────────────── */
+.scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: rgb(148 163 184 / 0.4); border-radius: 3px; }
+.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: rgb(148 163 184 / 0.6); }
