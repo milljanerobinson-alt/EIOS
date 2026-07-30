@@ -1,0 +1,100 @@
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- SEED: ACSF Mapping & Qualification Management
+-- ─────────────────────────────────────────────────────────────────────────────
+INSERT INTO ecc_product_features (
+  feature_id, name, category, sub_category, description, purpose,
+  status, priority, release_version, implementation_date,
+  implementation_source, source_file, developer, testing_status, production_ready,
+  database_changes, api_changes, ui_changes, compliance_impact, audit_impact, security_impact,
+  documentation_status, tags
+) VALUES
+
+('FEAT-030', 'Qualification Management Board', 'Qualification Management', 'Core',
+ 'Full CRUD management of VET qualifications. Supports import from aXcelerate, 2-step creation wizard (Details → ACSF Levels), mapping status tracking, and internal review notes.',
+ 'Maintain a registry of RTO qualifications with associated LLN and Digital minimum requirements.',
+ 'implemented', 'critical', 'v0.1', '2026-06-27 00:00:00+00',
+ 'Component', 'src/pages/QualificationsPage.tsx', 'AI', 'requires_review', true,
+ 'qualifications, qualification_lln_requirements tables',
+ 'Calls: import-axcelerate-qualifications, compute-acsf-mapping edge functions',
+ 'QualificationsPage with create/edit/delete/import/evidence modals',
+ 'ASQA: LLN requirements must be documented per qualification', 'Qualification changes logged',
+ NULL, 'partial', ARRAY['qualification', 'acsf', 'management']),
+
+('FEAT-031', 'ACSF Qualification Mapping Library (45 quals)', 'Qualification Management', 'ACSF',
+ 'Pre-populated lookup table of recommended ACSF minimum levels for 45 common Australian qualifications across BSB, CHC, CPC, SIT, HLT, FNS, ICT, SIS, TAE, TLI, AHC training packages.',
+ 'Reduce setup effort for RTOs by providing evidence-based defaults for common qualifications.',
+ 'implemented', 'high', 'v0.1', '2026-06-30 09:46:05+00',
+ 'Migration', 'supabase/migrations/20260630094605_add_qualification_mapping_system.sql', 'AI', 'requires_review', true,
+ 'qualification_mapping_library (45 rows seeded)', NULL, 'Auto-apply option on import',
+ 'ASQA: Defensible ACSF mapping with documented source', NULL, NULL,
+ 'partial', ARRAY['qualification', 'acsf', 'library', 'mapping']),
+
+('FEAT-032', 'UoC ACSF Auto-Mapping Engine', 'Qualification Management', 'ACSF',
+ '4-layer ACSF mapping engine: (1) direct library lookup, (2) UoC inference engine, (3) rollup aggregation, (4) review flagging. Maps 100+ Units of Competency to ACSF skill levels using pattern matching on task descriptions.',
+ 'Automate ACSF level calculation for new or unknown qualifications based on their UoC content.',
+ 'implemented', 'high', 'v0.1', '2026-06-30 10:10:33+00',
+ 'Migration + Edge Function', 'supabase/functions/compute-acsf-mapping/index.ts', 'AI', 'requires_review', true,
+ 'uoc_acsf_library (100+ UoCs), qualification_mapping_logs, qualifications (mapping_status, confidence_score)',
+ 'compute-acsf-mapping edge function; fetch-tga-unit for LLM-assisted extraction',
+ 'QualificationsPage "Re-run mapping" button',
+ 'ASQA: Automated mapping with audit log', 'qualification_mapping_logs records every computation',
+ NULL, 'partial', ARRAY['acsf', 'mapping', 'uoc', 'engine', 'automation']),
+
+('FEAT-033', 'UoC ACSF Library (100+ Units)', 'Qualification Management', 'ACSF',
+ 'Library of 100+ Units of Competency with validated ACSF mappings across TLI, BSB, CHC, CPC, SIT, ICT training packages. Includes source_type (official/validated/inferred), confidence scores, and evidence basis.',
+ 'Provide a queryable knowledge base of UoC-to-ACSF mappings for the auto-mapping engine.',
+ 'implemented', 'high', 'v0.1', '2026-06-30 10:10:33+00',
+ 'Migration', 'supabase/migrations/20260630103310_seed_uoc_acsf_library_52_new_units.sql', 'AI', 'requires_review', true,
+ 'uoc_acsf_library (100+ rows)', NULL, NULL,
+ NULL, NULL, NULL,
+ 'partial', ARRAY['uoc', 'acsf', 'library', 'data']),
+
+('FEAT-034', 'LLM-Assisted UoC Analysis (fetch-tga-unit)', 'Qualification Management', 'AI',
+ 'Edge function that sends VET unit descriptors to a configurable LLM API to extract ACSF skill indicators using structured prompting. Supports any OpenAI-compatible provider.',
+ 'Automate ACSF skill extraction from unit descriptors that are not in the library.',
+ 'implemented', 'medium', 'v0.1', '2026-06-27 00:00:00+00',
+ 'Edge Function', 'supabase/functions/fetch-tga-unit/index.ts', 'AI', 'requires_review', true,
+ NULL, 'Calls LLM API (OpenAI-compatible)', NULL,
+ NULL, NULL, 'LLM API key stored in settings vault',
+ 'partial', ARRAY['ai', 'llm', 'uoc', 'acsf', 'tga']),
+
+('FEAT-035', 'ACSF Indicator Library (75 indicators)', 'Qualification Management', 'ACSF',
+ 'Reference library of 75 ACSF performance indicators with trigger verbs for rule-based matching. 5 skill types × 5 levels × 3 indicators per cell. Used by EAEE analysis engine.',
+ 'Provide a queryable reference of ACSF indicators to support automated evidence analysis.',
+ 'implemented', 'medium', 'v0.1', '2026-07-03 09:26:16+00',
+ 'Migration', 'supabase/migrations/20260703092616_create_eaee_indicator_library_and_analysis_tables.sql', 'AI', 'requires_review', true,
+ 'acsf_indicator_library (75 rows seeded)', NULL, NULL,
+ NULL, NULL, NULL,
+ 'partial', ARRAY['acsf', 'indicators', 'library', 'eaee']),
+
+('FEAT-036', 'EAEE Analysis Engine', 'Qualification Management', 'ACSF',
+ 'Employment Aligned Evidence Evaluation (EAEE) engine. Analyses qualification UoC descriptors against ACSF indicator library to produce evidence-backed level recommendations with confidence scores.',
+ 'Provide a fully auditable, evidence-driven ACSF analysis that RTOs can submit to ASQA.',
+ 'implemented', 'high', 'v0.1', '2026-07-03 09:26:16+00',
+ 'Migration + Component', 'src/pages/EAEEPage.tsx', 'AI', 'requires_review', true,
+ 'eaee_analyses, eaee_feature_evidence, eaee_audit_log tables',
+ NULL, 'EAEEPage — analysis creation and review UI',
+ 'ASQA: Evidence-based ACSF analysis', 'eaee_audit_log tracks every change',
+ NULL, 'partial', ARRAY['eaee', 'acsf', 'analysis', 'evidence']),
+
+('FEAT-037', 'ACSF Mapping Evidence Page', 'Qualification Management', 'Compliance',
+ 'Per-qualification evidence viewer showing how ACSF levels were determined — mapping log history, UoC sources, confidence score, mapping method.',
+ 'Provide a printable evidence trail for ASQA audits.',
+ 'implemented', 'high', 'v0.1', '2026-06-27 00:00:00+00',
+ 'Component', 'src/pages/ACSFEvidencePage.tsx', 'AI', 'requires_review', true,
+ 'qualification_mapping_logs, uoc_acsf_library, qualifications',
+ NULL, 'ACSFEvidencePage — drill-down from QualificationsPage',
+ 'ASQA: Mapping evidence must be documented', NULL, NULL,
+ 'partial', ARRAY['acsf', 'evidence', 'compliance', 'mapping']),
+
+('FEAT-038', 'ACSF Mapping Evidence Module (DB)', 'Qualification Management', 'ACSF',
+ 'Dedicated evidence module for ACSF mapping — stores evidence records, UoC excerpts, matched indicators, and reasoning notes per mapping decision.',
+ 'Create a permanent, queryable evidence store for all ACSF mapping decisions.',
+ 'implemented', 'high', 'v0.1', '2026-07-03 08:22:42+00',
+ 'Migration', 'supabase/migrations/20260703082242_create_acsf_mapping_evidence_module.sql', 'AI', 'requires_review', true,
+ 'ACSF mapping evidence tables (from migration)', NULL, NULL,
+ 'ASQA: Evidence must be retained', 'Evidence stored permanently', NULL,
+ 'partial', ARRAY['acsf', 'evidence', 'mapping', 'module'])
+
+ON CONFLICT (feature_id) DO NOTHING;
