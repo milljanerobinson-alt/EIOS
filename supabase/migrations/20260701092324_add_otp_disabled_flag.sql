@@ -1,0 +1,1 @@
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS otp_disabled boolean NOT NULL DEFAULT false;
