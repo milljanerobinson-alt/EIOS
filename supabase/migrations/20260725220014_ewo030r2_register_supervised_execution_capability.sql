@@ -1,0 +1,62 @@
+-- EWO-030R.2: Register the supervised-engineering-execution capability
+-- in the atd_connect_capabilities registry, including the new
+-- inspectCodexProviderImplementationEvidence operation.
+
+INSERT INTO atd_connect_capabilities (
+  capability_id,
+  name,
+  category,
+  description,
+  status,
+  owner,
+  constitutional_visibility,
+  inspection_service,
+  relationships,
+  supported_operations,
+  metadata,
+  capability_version,
+  introduced_by_ewo,
+  lifecycle_status,
+  deprecated,
+  inspection_contract_version,
+  purpose,
+  current_availability
+) VALUES (
+  'supervised-engineering-execution',
+  'Supervised Engineering Execution',
+  'execution',
+  'Governed inspection of the supervised engineering execution engine, execution providers (including the Codex execution provider), execution pipelines, governance gates, and execution history.',
+  'active',
+  'EIOS Platform',
+  'public',
+  'executionDiagnostics',
+  '["execution-providers", "engineering-work-orders"]'::jsonb,
+  '["listExecutionProviders", "inspectExecutionProvider", "listExecutionRecords", "inspectExecutionRecord", "inspectExecutionPipeline", "inspectExecutionGovernanceGate", "inspectExecutionHistory", "inspectSupervisedExecutionEngine", "inspectCodexProviderImplementationEvidence"]'::jsonb,
+  '{"governed": true, "read_only": true}'::jsonb,
+  '1.0.0',
+  'EWO-029',
+  'active',
+  false,
+  '1.0.0',
+  'Provides governed, read-only inspection of the supervised engineering execution engine and all registered execution providers, including their configuration, credentials, budget, health, pipeline stages, controls, dry-run capability, and deployment status.',
+  'available'
+)
+ON CONFLICT (capability_id) DO UPDATE SET
+  name = EXCLUDED.name,
+  category = EXCLUDED.category,
+  description = EXCLUDED.description,
+  status = EXCLUDED.status,
+  owner = EXCLUDED.owner,
+  constitutional_visibility = EXCLUDED.constitutional_visibility,
+  inspection_service = EXCLUDED.inspection_service,
+  relationships = EXCLUDED.relationships,
+  supported_operations = EXCLUDED.supported_operations,
+  metadata = EXCLUDED.metadata,
+  capability_version = EXCLUDED.capability_version,
+  introduced_by_ewo = EXCLUDED.introduced_by_ewo,
+  lifecycle_status = EXCLUDED.lifecycle_status,
+  deprecated = EXCLUDED.deprecated,
+  inspection_contract_version = EXCLUDED.inspection_contract_version,
+  purpose = EXCLUDED.purpose,
+  current_availability = EXCLUDED.current_availability,
+  updated_at = now();
