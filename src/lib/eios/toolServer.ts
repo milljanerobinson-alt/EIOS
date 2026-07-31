@@ -642,7 +642,7 @@ async function repoApiCall(operation: string, payload: Record<string, unknown>):
   }
 }
 
-async function recordRepoAudit(ctx: ToolExecutionContext, config: RepositoryConfig, tool: string, path: string | null, args: Record<string, unknown>, resultSize: number, durationMs: number, decision: string): Promise<void> {
+async function recordRepoAudit(ctx: ToolExecutionContext, config: RepositoryConfig, tool: string, path: string | null, args: Record<string, unknown>, resultSize: number, durationMs: number, outcome: string, governanceDecision: string): Promise<void> {
   try {
     await supabase.from('atd_connect_inspection_log').insert({
       request_id: `REPO-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -650,7 +650,7 @@ async function recordRepoAudit(ctx: ToolExecutionContext, config: RepositoryConf
       requesting_persona: 'atd',
       operation: 'repository_intelligence',
       inspected_capability: tool,
-      outcome: decision,
+      outcome,
       request_source: 'conversational',
       original_request: JSON.stringify({ tool, path, args }).slice(0, 2000),
       session_id: ctx.conversationId,
@@ -663,11 +663,13 @@ async function recordRepoAudit(ctx: ToolExecutionContext, config: RepositoryConf
       policy_version: '1.0',
       context_version: '1.0',
       lifecycle_decision: null,
-      governance_decision: decision,
+      governance_decision: governanceDecision,
       requested_tools: [tool],
       executed_tools: [tool],
     });
-  } catch { /* audit failure is non-fatal */ }
+  } catch (auditErr) {
+    console.warn('[EIOS] Repository audit insert failed:', auditErr instanceof Error ? auditErr.message : String(auditErr));
+  }
 }
 
 async function repoDiscover(ctx: ToolExecutionContext): Promise<ToolExecutionResult> {
@@ -678,8 +680,7 @@ async function repoDiscover(ctx: ToolExecutionContext): Promise<ToolExecutionRes
 
   const inspect = await inspectRepository(config);
   const durationMs = Date.now() - start;
-  const decision = inspect.accessible ? 'approved' : 'denied';
-  await recordRepoAudit(ctx, config, 'eios_repo_discover', null, {}, inspect.size ?? 0, durationMs, decision);
+  await recordRepoAudit(ctx, config, 'eios_repo_discover', null, {}, inspect.size ?? 0, durationMs, inspect.accessible ? 'success' : 'error', inspect.accessible ? 'approved' : 'denied');
 
   if (!inspect.accessible) return errorResult('REPO_INACCESSIBLE', inspect.error ?? 'Repository not accessible');
 
@@ -708,7 +709,7 @@ async function repoTree(ctx: ToolExecutionContext, path: string | undefined, rec
       owner: config.repository_owner, repo: config.repository_name, ref, recursive: true,
     });
     const durationMs = Date.now() - start;
-    await recordRepoAudit(ctx, config, 'eios_repo_tree', path ?? '/', { recursive: true, branch: ref }, result.data ? JSON.stringify(result.data).length : 0, durationMs, result.ok ? 'approved' : 'denied');
+    await recordRepoAudit(ctx, config, 'eios_repo_tree', path ?? '/', { recursive: true, branch: ref }, result.data ? JSON.stringify(result.data).length : 0, durationMs, result.ok ? 'success' : 'error', result.ok ? 'approved' : 'denied');
     if (!result.ok) return errorResult('REPO_TREE_FAILED', result.error ?? 'Failed to list tree');
     const entries = (result.data!.entries as Array<Record<string, unknown>>) ?? [];
     const filtered = path ? entries.filter((e) => (e.path as string).startsWith(path.endsWith('/') ? path : path + '/')) : entries;
@@ -719,7 +720,7 @@ async function repoTree(ctx: ToolExecutionContext, path: string | undefined, rec
     owner: config.repository_owner, repo: config.repository_name, path: path ?? '', ref: branch,
   });
   const durationMs = Date.now() - start;
-  await recordRepoAudit(ctx, config, 'eios_repo_tree', path ?? '/', { recursive: false, branch: ref }, result.data ? JSON.stringify(result.data).length : 0, durationMs, result.ok ? 'approved' : 'denied');
+  await recordRepoAudit(ctx, config, 'eios_repo_tree', path ?? '/', { recursive: false, branch: ref }, result.data ? JSON.stringify(result.data).length : 0, durationMs, result.ok ? 'success' : 'error', result.ok ? 'approved' : 'denied');
   if (!result.ok) return errorResult('REPO_TREE_FAILED', result.error ?? 'Failed to list directory');
   return okResult({ entries: (result.data!.entries as Array<Record<string, unknown>>) ?? [], branch: ref });
 }
@@ -734,7 +735,7 @@ async function repoSearch(ctx: ToolExecutionContext, query: string, limit: numbe
     owner: config.repository_owner, repo: config.repository_name, query, per_page: limit ?? 30,
   });
   const durationMs = Date.now() - start;
-  await recordRepoAudit(ctx, config, 'eios_repo_search', null, { query, limit: limit ?? 30 }, result.data ? JSON.stringify(result.data).length : 0, durationMs, result.ok ? 'approved' : 'denied');
+  await recordRepoAudit(ctx, config, 'eios_repo_search', null, { query, limit: limit ?? 30 }, result.data ? JSON.stringify(result.data).length : 0, durationMs, result.ok ? 'success' : 'error', result.ok ? 'approved' : 'denied');
   if (!result.ok) return errorResult('REPO_SEARCH_FAILED', result.error ?? 'Code search failed');
   return okResult({
     total_count: result.data!.total_count,
@@ -750,7 +751,7 @@ async function repoReadFile(ctx: ToolExecutionContext, path: string, startLine: 
 
   if (isSensitiveFile(path)) {
     const durationMs = Date.now() - start;
-    await recordRepoAudit(ctx, config, 'eios_repo_read_file', path, { redacted: true }, 0, durationMs, 'denied');
+    await recordRepoAudit(ctx, config, 'eios_repo_read_file', path, { redacted: true }, 0, durationMs, 'success', 'denied');
     return errorResult('REPO_FILE_REDACTED', `File '${path}' is redacted for security. Secrets and environment files are not accessible.`);
   }
 
@@ -759,7 +760,7 @@ async function repoReadFile(ctx: ToolExecutionContext, path: string, startLine: 
   const durationMs = Date.now() - start;
 
   if (!file) {
-    await recordRepoAudit(ctx, config, 'eios_repo_read_file', path, { branch: ref }, 0, durationMs, 'denied');
+    await recordRepoAudit(ctx, config, 'eios_repo_read_file', path, { branch: ref }, 0, durationMs, 'error', 'denied');
     return errorResult('REPO_FILE_NOT_FOUND', `File '${path}' not found on branch '${ref}'.`);
   }
 
@@ -781,7 +782,7 @@ async function repoReadFile(ctx: ToolExecutionContext, path: string, startLine: 
   }
 
   content = redactSecrets(content);
-  await recordRepoAudit(ctx, config, 'eios_repo_read_file', path, { branch: ref, start_line: sLine, end_line: eLine }, content.length, durationMs, 'approved');
+  await recordRepoAudit(ctx, config, 'eios_repo_read_file', path, { branch: ref, start_line: sLine, end_line: eLine }, content.length, durationMs, 'success', 'approved');
 
   return okResult({
     path,
@@ -808,7 +809,7 @@ async function repoInspectSymbol(ctx: ToolExecutionContext, symbol: string, file
     owner: config.repository_owner, repo: config.repository_name, query: searchQuery, per_page: 20,
   });
   const durationMs = Date.now() - start;
-  await recordRepoAudit(ctx, config, 'eios_repo_inspect_symbol', null, { symbol, file_path: filePath }, result.data ? JSON.stringify(result.data).length : 0, durationMs, result.ok ? 'approved' : 'denied');
+  await recordRepoAudit(ctx, config, 'eios_repo_inspect_symbol', null, { symbol, file_path: filePath }, result.data ? JSON.stringify(result.data).length : 0, durationMs, result.ok ? 'success' : 'error', result.ok ? 'approved' : 'denied');
   if (!result.ok) return errorResult('REPO_SYMBOL_SEARCH_FAILED', result.error ?? 'Symbol search failed');
 
   const items = (result.data!.items as Array<Record<string, unknown>>) ?? [];
@@ -839,7 +840,7 @@ async function repoHistory(ctx: ToolExecutionContext, branch: string | undefined
     owner: config.repository_owner, repo: config.repository_name, ref, per_page: limit ?? 30,
   });
   const durationMs = Date.now() - start;
-  await recordRepoAudit(ctx, config, 'eios_repo_history', null, { branch: ref, limit: limit ?? 30 }, result.data ? JSON.stringify(result.data).length : 0, durationMs, result.ok ? 'approved' : 'denied');
+  await recordRepoAudit(ctx, config, 'eios_repo_history', null, { branch: ref, limit: limit ?? 30 }, result.data ? JSON.stringify(result.data).length : 0, durationMs, result.ok ? 'success' : 'error', result.ok ? 'approved' : 'denied');
   if (!result.ok) return errorResult('REPO_HISTORY_FAILED', result.error ?? 'Failed to list commits');
   return okResult({
     commits: (result.data!.commits as Array<Record<string, unknown>>) ?? [],
@@ -858,7 +859,7 @@ async function repoDiff(ctx: ToolExecutionContext, base: string | undefined, hea
       owner: config.repository_owner, repo: config.repository_name, sha: commitSha,
     });
     const durationMs = Date.now() - start;
-    await recordRepoAudit(ctx, config, 'eios_repo_diff', null, { commit_sha: commitSha }, result.data ? JSON.stringify(result.data).length : 0, durationMs, result.ok ? 'approved' : 'denied');
+    await recordRepoAudit(ctx, config, 'eios_repo_diff', null, { commit_sha: commitSha }, result.data ? JSON.stringify(result.data).length : 0, durationMs, result.ok ? 'success' : 'error', result.ok ? 'approved' : 'denied');
     if (!result.ok) return errorResult('REPO_DIFF_FAILED', result.error ?? 'Commit not found');
     return okResult({ commit: result.data });
   }
@@ -871,7 +872,7 @@ async function repoDiff(ctx: ToolExecutionContext, base: string | undefined, hea
     owner: config.repository_owner, repo: config.repository_name, base: baseRef, head: headRef,
   });
   const durationMs = Date.now() - start;
-  await recordRepoAudit(ctx, config, 'eios_repo_diff', null, { base: baseRef, head: headRef }, result.data ? JSON.stringify(result.data).length : 0, durationMs, result.ok ? 'approved' : 'denied');
+  await recordRepoAudit(ctx, config, 'eios_repo_diff', null, { base: baseRef, head: headRef }, result.data ? JSON.stringify(result.data).length : 0, durationMs, result.ok ? 'success' : 'error', result.ok ? 'approved' : 'denied');
   if (!result.ok) return errorResult('REPO_DIFF_FAILED', result.error ?? 'Comparison failed');
   return okResult(result.data);
 }
@@ -899,7 +900,7 @@ async function repoArchitectureRecords(ctx: ToolExecutionContext, recordType: st
     owner: config.repository_owner, repo: config.repository_name, query, per_page: max,
   });
   const durationMs = Date.now() - start;
-  await recordRepoAudit(ctx, config, 'eios_repo_architecture_records', null, { record_type: rType, limit: max }, result.data ? JSON.stringify(result.data).length : 0, durationMs, result.ok ? 'approved' : 'denied');
+  await recordRepoAudit(ctx, config, 'eios_repo_architecture_records', null, { record_type: rType, limit: max }, result.data ? JSON.stringify(result.data).length : 0, durationMs, result.ok ? 'success' : 'error', result.ok ? 'approved' : 'denied');
   if (!result.ok) return errorResult('REPO_RECORDS_FAILED', result.error ?? 'Architecture record search failed');
   return okResult({
     record_type: rType,
@@ -968,7 +969,7 @@ async function repoCrossReference(ctx: ToolExecutionContext, query: string, sear
   }
 
   const durationMs = Date.now() - start;
-  await recordRepoAudit(ctx, config, 'eios_repo_cross_reference', null, { query, limit: max }, JSON.stringify(results).length, durationMs, 'approved');
+  await recordRepoAudit(ctx, config, 'eios_repo_cross_reference', null, { query, limit: max }, JSON.stringify(results).length, durationMs, 'success', 'approved');
 
   return okResult(results);
 }
