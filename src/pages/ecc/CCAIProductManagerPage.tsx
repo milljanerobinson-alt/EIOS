@@ -3412,7 +3412,7 @@ export function CCAIProductManagerPage({ onNavigate }: { onNavigate?: (section: 
           </button>
           <button
             onClick={() => { newConversation(); setSidebarOpen(false); }}
-            className="w-full flex items-center justify-center gap-1.5 py-2 bg-amber-800 hover:bg-amber-900 text-white text-xs font-semibold rounded-xl transition-colors"
+            className="w-full flex items-center justify-center gap-1.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl transition-colors"
           >
             <Plus className="w-3.5 h-3.5" /> New Conversation
           </button>
@@ -3548,7 +3548,7 @@ export function CCAIProductManagerPage({ onNavigate }: { onNavigate?: (section: 
             </button>
             <button
               onClick={() => newConversation()}
-              className="w-full flex items-center justify-center gap-1.5 py-2 bg-amber-800 hover:bg-amber-900 text-white text-xs font-semibold rounded-xl transition-colors"
+              className="w-full flex items-center justify-center gap-1.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl transition-colors"
             >
               <Plus className="w-3.5 h-3.5" /> New Conversation
             </button>
