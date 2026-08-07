@@ -247,7 +247,7 @@ export function LoginPage({ loginContext = 'eios', oauthRedirect }: { loginConte
         <div className="w-full max-w-sm">
           {view !== 'otp' && (
             <button
-              onClick={() => { window.location.href = isEiosOAuth ? '#/oauth/consent' : isLlnd ? '#/home' : '#/login'; }}
+              onClick={() => { window.location.href = isEiosOAuth ? '#/oauth/consent' : isLlnd ? `${window.location.origin}/#/home` : '#/login'; }}
               className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 mb-6 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" /> {isEiosOAuth ? 'Back to authorisation' : isLlnd ? 'Back to website' : 'Back to EIOS'}
