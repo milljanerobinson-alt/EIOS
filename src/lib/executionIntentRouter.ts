@@ -546,9 +546,9 @@ export async function evaluateExecutionGate(
   // 5. Product Owner execution approval is explicit
   const { data: execApproval } = await supabase
     .from('ewo_execution_approvals')
-    .select('decision, approved_by, approved_at')
-    .eq('ewo_ref', ewoRef)
-    .order('approved_at', { ascending: false })
+    .select('decision, product_owner, created_at')
+    .eq('ewo_id', ewo.id)
+    .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 

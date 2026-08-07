@@ -464,9 +464,9 @@ async function getExecutionState(ewoRef: string): Promise<ToolExecutionResult> {
   if (!ewo) return errorResult('NOT_FOUND', `EWO ${ewoRef} not found.`);
   const { data: approvals } = await supabase
     .from('ewo_execution_approvals')
-    .select('decision, approved_by, approved_at')
-    .eq('ewo_ref', ewoRef)
-    .order('approved_at', { ascending: false })
+    .select('decision, product_owner, created_at')
+    .eq('ewo_id', ewo.id)
+    .order('created_at', { ascending: false })
     .limit(5);
   const { data: executions } = await supabase
     .from('supervised_execution_records')
@@ -1018,13 +1018,17 @@ async function prepareExecution(ctx: ToolExecutionContext, ewoRef: string): Prom
 }
 
 async function approveExecution(ctx: ToolExecutionContext, ewoRef: string): Promise<ToolExecutionResult> {
-  const { data, error } = await supabase.from('ewo_execution_approvals').insert({
-    ewo_ref: ewoRef,
-    decision: 'approved',
-    approved_by: ctx.userId,
-    approved_at: new Date().toISOString(),
-  }).select().single();
+  const { data, error } = await supabase.rpc('approve_ewo_for_execution', {
+    p_ewo_ref: ewoRef,
+    p_approved_by: ctx.userId,
+    p_decision: 'approved',
+    p_approval_statement: 'Product Owner approved engineering execution.',
+    p_provider_preference: 'codex',
+  });
   if (error) return errorResult('DB_ERROR', error.message);
+  if (!data || (typeof data === 'object' && 'success' in data && data.success !== true)) {
+    return errorResult('DB_ERROR', 'Approval persistence was not confirmed.');
+  }
   return governedOkResult({ approval: data });
 }
 
@@ -1068,14 +1072,17 @@ async function recordAcceptance(ctx: ToolExecutionContext, ewoRef: string): Prom
 }
 
 async function rejectExecution(ctx: ToolExecutionContext, ewoRef: string, reason?: string): Promise<ToolExecutionResult> {
-  const { data, error } = await supabase.from('ewo_execution_approvals').insert({
-    ewo_ref: ewoRef,
-    decision: 'rejected',
-    approved_by: ctx.userId,
-    approved_at: new Date().toISOString(),
-    notes: reason ?? null,
-  }).select().single();
+  const { data, error } = await supabase.rpc('approve_ewo_for_execution', {
+    p_ewo_ref: ewoRef,
+    p_approved_by: ctx.userId,
+    p_decision: 'rejected',
+    p_approval_statement: reason ?? 'Product Owner rejected engineering execution.',
+    p_provider_preference: null,
+  });
   if (error) return errorResult('DB_ERROR', error.message);
+  if (!data || (typeof data === 'object' && 'success' in data && data.success !== true)) {
+    return errorResult('DB_ERROR', 'Rejection persistence was not confirmed.');
+  }
   return governedOkResult({ rejection: data });
 }
 
