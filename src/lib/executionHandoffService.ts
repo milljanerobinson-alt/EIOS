@@ -141,6 +141,44 @@ async function createExecutionRequest(
 
   const executionRequestId = `EHR-${String(Date.now()).slice(-8)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 
+  const { data: approvalEwo, error: approvalEwoError } = await supabase
+    .from('engineering_work_orders')
+    .select('id')
+    .eq('ewo_ref', ewoRef)
+    .single();
+  if (approvalEwoError || !approvalEwo) {
+    return { record: null, error: `Failed to resolve EWO for approval: ${approvalEwoError?.message || 'EWO not found'}`, isDuplicate: false };
+  }
+
+  // Approval must be durably persisted before any execution handoff exists.
+  const { data: persistedApproval, error: approvalError } = await supabase.rpc('approve_ewo_for_execution', {
+    p_ewo_ref: ewoRef,
+    p_approved_by: approval.approving_persona || 'product_owner',
+    p_decision: 'approved',
+    p_approval_statement: 'Conversational approval for execution handoff.',
+    p_provider_preference: 'codex',
+  });
+
+  if (approvalError) {
+    return { record: null, error: `Failed to persist execution approval: ${approvalError.message}`, isDuplicate: false };
+  }
+  if (!persistedApproval || (typeof persistedApproval === 'object' && 'success' in persistedApproval && persistedApproval.success !== true)) {
+    return { record: null, error: 'Failed to persist execution approval: persistence was not confirmed.', isDuplicate: false };
+  }
+
+  const { data: approvalReadback, error: approvalReadbackError } = await supabase
+    .from('ewo_execution_approvals')
+    .select('approval_ref, decision, product_owner, created_at')
+    .eq('ewo_id', approvalEwo.id)
+    .eq('decision', 'approved')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (approvalReadbackError || !approvalReadback) {
+    return { record: null, error: `Failed to verify execution approval: ${approvalReadbackError?.message || 'approval not found after persistence'}`, isDuplicate: false };
+  }
+
   const insertData = {
     execution_request_id: executionRequestId,
     ewo_ref: ewoRef,
@@ -178,15 +216,6 @@ async function createExecutionRequest(
   }
 
   const record = mapDbToHandoff(data);
-
-  // Record the PO execution approval in ewo_execution_approvals
-  await supabase.rpc('approve_ewo_for_execution', {
-    p_ewo_ref: ewoRef,
-    p_approved_by: approval.approving_persona || 'product_owner',
-    p_decision: 'approved',
-    p_approval_statement: 'Conversational approval for execution handoff.',
-    p_provider_preference: 'codex',
-  }).then(() => {}, () => {});
 
   await recordHandoffAudit(data.id, ewoRef, 'approval_received', {
     raw_message: approval.raw_message,
