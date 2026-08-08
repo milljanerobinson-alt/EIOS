@@ -1,8 +1,8 @@
 /**
  * EWO-033 Security Regression — Pathname-Based Product Routing
  *
- * Regression tests for the defect where opening `/` redirected to
- * `/llnd#/assessment/dashboard` after the security update revoked
+ * Regression tests for pathname-based product isolation. LLND now owns `/`
+ * and EIOS owns `/eios`; neither product may expose the other's routes.
  * EXECUTE on get_my_role() from authenticated, breaking RLS policies
  * that depend on it, causing profile resolution to return null, which
  * cascaded into the EIOS root handler redirecting to an LLND workspace.
@@ -35,7 +35,7 @@ describe('Root cause: get_my_role() EXECUTE grant', () => {
 
 // ─── 2. EIOS root never redirects to LLND ──────────────────────────────────────
 
-describe('EIOS root never redirects to LLND', () => {
+describe('EIOS /eios entry never exposes LLND routes', () => {
   const app = readFile(APP_PATH);
 
   it('does not contain navigate to /llnd#/assessment/dashboard', () => {
@@ -85,12 +85,15 @@ describe('Product boundary enforcement', () => {
     expect(app).toContain('resolveProduct()');
   });
 
-  it('resolveProduct checks /llnd pathname', () => {
-    expect(productCtx).toContain("LLND_PATH = '/llnd'");
-    expect(productCtx).toMatch(/pathname\s*===\s*LLND_PATH/);
+  it('resolveProduct assigns /eios to EIOS and / to LLND', () => {
+    expect(productCtx).toContain("LLND_PATH = '/'");
+    expect(productCtx).toContain("EIOS_PATH = '/eios'");
+    expect(productCtx).toMatch(/pathname\s*===\s*EIOS_PATH/);
+    expect(productCtx).toContain("return 'llnd'");
   });
 
-  it('resolveProduct migrates /lln to /llnd via history.replaceState', () => {
+  it('resolveProduct migrates legacy /llnd and /lln paths to root', () => {
+    expect(productCtx).toContain('LEGACY_LLND_PATH');
     expect(productCtx).toContain('LEGACY_LLN_PATH');
     expect(productCtx).toContain('history.replaceState');
   });
@@ -111,19 +114,19 @@ describe('Product boundary enforcement', () => {
 describe('Cross-product contamination rejection', () => {
   const app = readFile(APP_PATH);
 
-  it('rejects EIOS routes under /llnd', () => {
+  it('rejects EIOS routes at the LLND root', () => {
     expect(app).toMatch(/product\s*===\s*['"]llnd['"]\s*&&\s*isEiosRoute/);
   });
 
-  it('redirects LLND routes under EIOS to /llnd', () => {
+  it('redirects LLND routes under /eios to the root product', () => {
     expect(app).toMatch(/isLlndRoute\(hash\)/);
   });
 
-  it('engineering routes under /llnd redirect to LLND fallback', () => {
+  it('engineering routes at root redirect to an LLND fallback', () => {
     expect(app).toMatch(/route\.kind\s*===\s*['"]engineering['"]/);
   });
 
-  it('platform routes under /llnd redirect to LLND fallback', () => {
+  it('platform routes under /eios return to LLND', () => {
     expect(app).toMatch(/route\.kind\s*===\s*['"]platform['"]/);
   });
 });
@@ -142,8 +145,8 @@ describe('Authentication redirect product awareness', () => {
     expect(auth).toContain("window.location.hash = '#/'");
   });
 
-  it('OAuth redirect uses window.location.origin not /llnd', () => {
-    expect(auth).toContain('redirectTo: window.location.origin');
+  it('OAuth redirect uses the active product base URL', () => {
+    expect(auth).toContain('productBaseUrl(resolveProduct())');
   });
 });
 
@@ -164,14 +167,15 @@ describe('Fallback route logic', () => {
 
 // ─── 7. Legacy /lln migration ──────────────────────────────────────────────────
 
-describe('Legacy /lln migration', () => {
+describe('Legacy LLND path migration', () => {
   const productCtx = readFile(PRODUCT_CTX_PATH);
 
-  it('migrates /lln to /llnd preserving hash', () => {
+  it('migrates /llnd and /lln to root preserving hash', () => {
+    expect(productCtx).toContain('LEGACY_LLND_PATH');
     expect(productCtx).toContain('LEGACY_LLN_PATH');
     expect(productCtx).toContain('LLND_PATH');
-    expect(productCtx).toMatch(/replacement\s*=\s*LLND_PATH\s*\+/);
-    expect(productCtx).toMatch(/fullUrl\s*=\s*replacement\s*\+/);
+    expect(productCtx).toContain('pathname.slice(legacyPrefix.length)');
+    expect(productCtx).toMatch(/fullUrl\s*=\s*\(suffix\s*\|\|\s*LLND_PATH\)/);
   });
 
   it('uses history.replaceState not pushState', () => {
@@ -194,7 +198,7 @@ describe('_redirects configuration', () => {
       path.resolve(__dirname, '../../public/_redirects'),
       'utf-8',
     );
-    expect(redirects).toContain('/oauth/consent  /#/oauth/consent  200');
+    expect(redirects).toContain('/oauth/consent  /eios#/oauth/consent  302');
     expect(redirects).toContain('/*  /index.html  200');
   });
 });

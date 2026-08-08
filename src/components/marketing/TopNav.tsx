@@ -44,7 +44,7 @@ export function TopNav({ currentHash }: TopNavProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-6">
         {/* Logo */}
         <button
-          onClick={() => nav('#/home')}
+          onClick={() => nav('#/')}
           className="flex items-center gap-2.5 flex-shrink-0 group"
         >
           <div className="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center shadow-sm group-hover:bg-primary-700 transition-colors">

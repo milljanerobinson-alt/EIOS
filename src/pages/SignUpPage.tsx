@@ -113,7 +113,7 @@ export function SignUpPage() {
       {/* Header */}
       <header className="bg-white border-b border-slate-100 px-4 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <button onClick={() => nav('#/home')} className="flex items-center gap-2.5">
+          <button onClick={() => nav('#/')} className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
               <GraduationCap className="w-4.5 h-4.5 text-white" />
             </div>
