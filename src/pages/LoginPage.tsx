@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, KeyboardEvent, ClipboardEvent } from 'reac
 import { GraduationCap, AlertCircle, Loader2, Eye, EyeOff, MailCheck, CheckCircle2, ArrowLeft, ShieldCheck, RefreshCw } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
+import { productBaseUrl } from '../lib/productContext';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -174,7 +175,9 @@ export function LoginPage({ loginContext = 'eios', oauthRedirect }: { loginConte
     e.preventDefault();
     setError(null); setResetLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, { redirectTo: window.location.origin });
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: productBaseUrl(isEios ? 'eios' : 'llnd'),
+      });
       if (error) throw error;
       setView('sent');
     } catch (err: unknown) {
@@ -204,7 +207,7 @@ export function LoginPage({ loginContext = 'eios', oauthRedirect }: { loginConte
           <div className={`absolute bottom-20 right-10 w-96 h-96 rounded-full blur-3xl ${isEios ? 'bg-eios-400' : 'bg-primary-400'}`} />
         </div>
         <div className="relative z-10">
-          <button onClick={() => { window.location.href = isEiosOAuth ? '#/oauth/consent' : isLlnd ? '#/' : '#/login'; }} className="flex items-center gap-3 mb-12">
+          <button onClick={() => { window.location.href = isEiosOAuth ? '#/oauth/consent' : isLlnd ? window.location.origin : '#/login'; }} className="flex items-center gap-3 mb-12">
             <div className="w-11 h-11 bg-white/10 backdrop-blur rounded-xl flex items-center justify-center border border-white/20">
               {isEios ? <ShieldCheck className="w-6 h-6" /> : <GraduationCap className="w-6 h-6" />}
             </div>
@@ -247,7 +250,7 @@ export function LoginPage({ loginContext = 'eios', oauthRedirect }: { loginConte
         <div className="w-full max-w-sm">
           {view !== 'otp' && (
             <button
-              onClick={() => { window.location.href = isEiosOAuth ? '#/oauth/consent' : isLlnd ? `${window.location.origin}/#/home` : '#/login'; }}
+              onClick={() => { window.location.href = isEiosOAuth ? '#/oauth/consent' : isLlnd ? window.location.origin : '#/login'; }}
               className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 mb-6 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" /> {isEiosOAuth ? 'Back to authorisation' : isLlnd ? 'Back to website' : 'Back to EIOS'}

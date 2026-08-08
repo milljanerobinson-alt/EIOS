@@ -1,41 +1,53 @@
 // Product Context Resolution
 //
-// The EIOS platform hosts two products distinguished by pathname:
-//   /        -> EIOS  (https://eios.bolt.host/#/...)
-//   /llnd    -> LLND Automate  (https://eios.bolt.host/llnd#/...)
-//   /lln     -> legacy LLND path, migrated to /llnd
+// Two products are distinguished by pathname:
+//   /        -> LLND Automate
+//   /eios    -> EIOS
+//   /llnd and /lln are legacy LLND paths, migrated to /
 //
 // The pathname is the product boundary. The hash route is resolved within
 // the product context. The two products must never interchange routes.
 
 export type Product = 'eios' | 'llnd';
 
-const LLND_PATH = '/llnd';
+const LLND_PATH = '/';
+const EIOS_PATH = '/eios';
+const LEGACY_LLND_PATH = '/llnd';
 const LEGACY_LLN_PATH = '/lln';
+
+export function productBaseUrl(product: Product): string {
+  const origin = typeof window === 'undefined' ? '' : window.location.origin;
+  return `${origin}${product === 'eios' ? EIOS_PATH : LLND_PATH}`;
+}
 
 /**
  * Resolve the product context from the current pathname.
- * Performs legacy /lln -> /llnd migration via history.replaceState
+ * Performs legacy /llnd and /lln -> / migration via history.replaceState
  * (no extra history entry, no redirect loop) before returning.
  */
 export function resolveProduct(): Product {
-  if (typeof window === 'undefined') return 'eios';
+  if (typeof window === 'undefined') return 'llnd';
 
   const pathname = window.location.pathname;
 
-  // Legacy /lln -> /llnd migration (preserve hash + search)
-  if (pathname === LEGACY_LLN_PATH || pathname.startsWith(LEGACY_LLN_PATH + '/')) {
-    const replacement = LLND_PATH + pathname.slice(LEGACY_LLN_PATH.length);
-    const fullUrl = replacement + window.location.search + window.location.hash;
+  if (pathname === EIOS_PATH || pathname.startsWith(EIOS_PATH + '/')) {
+    return 'eios';
+  }
+
+  // Preserve legacy OAuth callbacks while moving them to the EIOS boundary.
+  if (pathname === '/oauth/consent') return 'eios';
+
+  // Legacy /llnd and /lln paths now resolve at the LLND root.
+  const legacyPrefix = [LEGACY_LLND_PATH, LEGACY_LLN_PATH]
+    .find(prefix => pathname === prefix || pathname.startsWith(prefix + '/'));
+  if (legacyPrefix) {
+    const suffix = pathname.slice(legacyPrefix.length);
+    const fullUrl = (suffix || LLND_PATH) + window.location.search + window.location.hash;
     history.replaceState(null, '', fullUrl);
     return 'llnd';
   }
 
-  if (pathname === LLND_PATH || pathname.startsWith(LLND_PATH + '/')) {
-    return 'llnd';
-  }
-
-  return 'eios';
+  return 'llnd';
 }
 
 /**
@@ -43,7 +55,7 @@ export function resolveProduct(): Product {
  * Only mutates the hash; the pathname stays as-is.
  */
 export function navigateInProduct(product: Product, hash: string): void {
-  const target = product === 'llnd' ? LLND_PATH : '/';
+  const target = product === 'llnd' ? LLND_PATH : EIOS_PATH;
   const current = window.location.pathname;
   const normalisedHash = hash.startsWith('#') ? hash : `#${hash}`;
 
@@ -60,7 +72,7 @@ export function navigateInProduct(product: Product, hash: string): void {
 }
 
 /**
- * Migrate any persisted values containing /lln to /llnd.
+ * Migrate persisted legacy LLND product paths to the root product.
  * Scans localStorage and sessionStorage for known redirect/route keys.
  */
 export function migrateLegacyLlnPaths(): void {
@@ -85,8 +97,8 @@ export function migrateLegacyLlnPaths(): void {
     try {
       // localStorage
       let value = localStorage.getItem(key);
-      if (value && value.includes('/lln') && !value.includes('/llnd')) {
-        const migrated = value.replace(/\/lln(?!d)/g, '/llnd');
+      if (value && (/\/llnd(?:\/|#|$)/.test(value) || /\/lln(?:\/|#|$)/.test(value))) {
+        const migrated = value.replace(/\/llnd(?=\/|#|$)/g, '').replace(/\/lln(?=\/|#|$)/g, '');
         localStorage.setItem(key, migrated);
         continue;
       }
@@ -95,8 +107,8 @@ export function migrateLegacyLlnPaths(): void {
     try {
       // sessionStorage
       let value = sessionStorage.getItem(key);
-      if (value && value.includes('/lln') && !value.includes('/llnd')) {
-        const migrated = value.replace(/\/lln(?!d)/g, '/llnd');
+      if (value && (/\/llnd(?:\/|#|$)/.test(value) || /\/lln(?:\/|#|$)/.test(value))) {
+        const migrated = value.replace(/\/llnd(?=\/|#|$)/g, '').replace(/\/lln(?=\/|#|$)/g, '');
         sessionStorage.setItem(key, migrated);
       }
     } catch { /* ignore */ }
@@ -105,25 +117,26 @@ export function migrateLegacyLlnPaths(): void {
 
 /**
  * Returns true if a hash route belongs to EIOS product.
- * EIOS routes: engineering, platform, administration, login, oauth, root/marketing
+ * EIOS routes: engineering, EIOS login, OAuth, and the EIOS root.
  */
 export function isEiosRoute(hash: string): boolean {
   const h = hash.replace(/^#\/?/, '').split('?')[0];
   if (!h || h === '') return true;
   const first = h.split('/')[0];
-  return ['engineering', 'platform', 'administration', 'login', 'oauth',
-    'home', 'about', 'features', 'how-it-works', 'resources', 'contact',
-    'pricing', 'signup', 'forgot-password'].includes(first);
+  return ['engineering', 'administration', 'login', 'oauth'].includes(first);
 }
 
 /**
  * Returns true if a hash route belongs to LLND Automate product.
- * LLND routes: assessment, trainer, candidates, results, settings, llnd-automate
+ * LLND routes: public website, authentication, assessment, trainer, and RTO
+ * administration workspaces.
  */
 export function isLlndRoute(hash: string): boolean {
   const h = hash.replace(/^#\/?/, '').split('?')[0];
   if (!h || h === '') return false;
   const first = h.split('/')[0];
-  return ['assessment', 'trainer', 'candidates', 'results', 'settings',
-    'llnd-automate', 'lln', 'digital', 'quiz', 'student'].includes(first);
+  return ['home', 'about', 'features', 'how-it-works', 'resources', 'contact',
+    'pricing', 'signup', 'forgot-password', 'assessment', 'trainer', 'platform',
+    'candidates', 'results', 'settings', 'llnd-automate', 'lln', 'digital',
+    'quiz', 'student'].includes(first);
 }

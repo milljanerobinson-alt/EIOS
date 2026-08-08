@@ -43,11 +43,11 @@ body { @apply bg-slate-50 text-slate-900 antialiased; }
 .shimmer-text {
   background: linear-gradient(
     90deg,
-    #7c3aed 0%,
-    #c4b5fd 20%,
+    #2563eb 0%,
+    #93c5fd 20%,
     #ffffff 40%,
-    #c4b5fd 60%,
-    #7c3aed 100%
+    #93c5fd 60%,
+    #2563eb 100%
   );
   background-size: 200% auto;
   -webkit-background-clip: text;

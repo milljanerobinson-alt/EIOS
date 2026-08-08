@@ -10,6 +10,7 @@ import {
   type AnyWorkspace,
   type CustomerWorkspace,
 } from '../lib/workspaceAccess';
+import { navigateInProduct, resolveProduct } from '../lib/productContext';
 
 export type Workspace = AnyWorkspace;
 
@@ -29,7 +30,7 @@ interface WsDef {
 const ALL_WORKSPACES: WsDef[] = [
   {
     key: 'assessment',
-    label: 'Assessment Platform',
+    label: 'Candidate Assessment',
     sub: 'Operate the organisation',
     icon: GraduationCap,
     accent: 'text-primary-600',
@@ -49,8 +50,8 @@ const ALL_WORKSPACES: WsDef[] = [
   },
   {
     key: 'platform_admin',
-    label: 'Platform Administration',
-    sub: 'Configure the platform',
+    label: 'RTO Administration',
+    sub: 'Configure your organisation',
     icon: Wrench,
     accent: 'text-slate-700',
     bg: 'bg-slate-100',
@@ -74,7 +75,7 @@ const ALL_WORKSPACES: WsDef[] = [
 export function switchTo(workspace: AnyWorkspace) {
   setLastWorkspace(workspace);
   const page = getLastPage(workspace);
-  window.location.hash = workspaceHash(workspace, page);
+  navigateInProduct(workspace === 'engineering' ? 'eios' : 'llnd', workspaceHash(workspace, page));
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -114,8 +115,10 @@ export function WorkspaceSwitcher({ currentWorkspace }: WorkspaceSwitcherProps) 
 
   // Determine which workspaces this user can see
   const isAdmin = profile?.role === 'admin';
+  const product = resolveProduct();
   const availableWorkspaces = ALL_WORKSPACES.filter(ws => {
-    if (ws.key === 'engineering') return isAdmin;
+    if (product === 'eios') return ws.key === 'engineering' && isAdmin;
+    if (ws.key === 'engineering') return false;
     return customerAccess.some(ca => ca.workspace === ws.key as CustomerWorkspace);
   });
 

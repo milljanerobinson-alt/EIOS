@@ -84,7 +84,7 @@ export function SignUpPage() {
       });
 
       setDone(true);
-      setTimeout(() => { nav('#/'); }, 2000);
+      setTimeout(() => { nav('#/assessment/dashboard'); }, 2000);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {

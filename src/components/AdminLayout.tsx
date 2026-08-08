@@ -85,7 +85,7 @@ export function AdminLayout({ currentPage, onPageChange, children }: AdminLayout
             </div>
             <div>
               <div className="text-sm font-bold text-slate-900">LLND Automate</div>
-              <div className="text-xs text-slate-400">Assessment Platform</div>
+              <div className="text-xs text-slate-400">Candidate Assessment</div>
             </div>
           </div>
           <button

@@ -3,6 +3,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import type { Profile } from './types';
 import { logAudit } from './audit';
+import { productBaseUrl, resolveProduct } from './productContext';
 
 interface AuthContextType {
   user: User | null;
@@ -127,14 +128,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signInWithGoogle() {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: productBaseUrl(resolveProduct()) },
     });
   }
 
   async function signInWithApple() {
     await supabase.auth.signInWithOAuth({
       provider: 'apple',
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: productBaseUrl(resolveProduct()) },
     });
   }
 

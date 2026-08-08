@@ -80,9 +80,13 @@ function Router() {
   const { hasWorkspace, loading: wsLoading } = useWorkspaceAccess();
 
   // ─── Product context resolution (synchronous, before first render) ──────────
-  // Resolves product from pathname, migrates legacy /lln -> /llnd,
+  // Resolves LLND at / and EIOS at /eios, migrating legacy LLND paths,
   // and normalises OAuth consent path-based redirects.
   const product = resolveProduct();
+
+  useEffect(() => {
+    document.title = product === 'llnd' ? 'LLND Automate' : 'EIOS';
+  }, [product]);
 
   // Migrate any persisted /lln values in storage (once)
   useEffect(() => { migrateLegacyLlnPaths(); }, []);
@@ -95,14 +99,14 @@ function Router() {
     const path = window.location.pathname;
     const search = window.location.search;
     const existingHash = window.location.hash;
-    if (path === '/oauth/consent' && search) {
+    if ((path === '/oauth/consent' || path === '/eios/oauth/consent') && search) {
       const authId = new URLSearchParams(search).get('authorization_id');
       if (authId && !existingHash.includes('oauth/consent')) {
         const newHash = `#/oauth/consent?authorization_id=${encodeURIComponent(authId)}`;
-        history.replaceState(null, '', newHash);
+        history.replaceState(null, '', `/eios${newHash}`);
       }
-    } else if (path === '/oauth/consent' && !existingHash.includes('oauth/consent')) {
-      history.replaceState(null, '', '#/oauth/consent');
+    } else if ((path === '/oauth/consent' || path === '/eios/oauth/consent') && !existingHash.includes('oauth/consent')) {
+      history.replaceState(null, '', '/eios#/oauth/consent');
     }
   }
 
@@ -120,14 +124,14 @@ function Router() {
   const route = parseHash(hash);
 
   // ─── Product boundary enforcement ──────────────────────────────────────────
-  // EIOS routes must never load under /llnd; LLND routes must never load under /.
+  // EIOS routes must never load at the LLND root; LLND routes must never load under /eios.
   if (product === 'llnd' && isEiosRoute(hash) && route.kind !== 'root' && route.kind !== 'llnd-login') {
-    // An EIOS route under /llnd — reject to LLND fallback
+    // An EIOS route at the LLND root — reject to an LLND fallback
     navigateInProduct('llnd', '#/assessment/dashboard');
     return <FullScreenLoader />;
   }
   if (product === 'eios' && isLlndRoute(hash) && route.kind !== 'root') {
-    // An LLND route under EIOS root — redirect to /llnd preserving the hash
+    // An LLND route under /eios — return it to the root while preserving the hash
     navigateInProduct('llnd', hash);
     return <FullScreenLoader />;
   }
@@ -142,7 +146,7 @@ function Router() {
   if (route.kind === 'oauth-consent') return <OAuthConsentPage />;
 
   // ─── EIOS root route ──────────────────────────────────────────────────────────
-  // EIOS root (#/) enters the EIOS authentication flow.
+  // /eios#/ enters the EIOS authentication flow.
   // Signed-out -> #/login. Signed-in -> authorised EIOS workspace.
   // Must NEVER redirect to an LLND workspace (assessment/trainer).
   if (route.kind === 'root' && product === 'eios') {
@@ -151,8 +155,7 @@ function Router() {
       return <FullScreenLoader />;
     }
     // Signed-in: restore valid authorised EIOS workspace
-    // EIOS workspaces are 'engineering' and 'platform_admin' only.
-    // 'assessment' and 'trainer' are LLND product workspaces.
+    // EIOS uses the engineering workspace. Customer workspaces belong to LLND.
     const ws = getLastWorkspace();
     const page = getLastPage(ws);
     const eiosWs = resolveEiosWorkspace(ws, profile, hasWorkspace);
@@ -161,24 +164,13 @@ function Router() {
   }
 
   // ─── LLND root route ─────────────────────────────────────────────────────────
-  // LLND root (/llnd#/) enters the LLND Automate application flow.
+  // The domain root is the public LLND Automate website.
   if (route.kind === 'root' && product === 'llnd') {
-    if (!user || !otpVerified) {
-      redirect('#/llnd-automate/login');
-      return <FullScreenLoader />;
-    }
-    // Signed-in: route to LLND assessment dashboard or saved LLND workspace
-    const ws = getLastWorkspace() as CustomerWorkspace;
-    if (ws === 'assessment' || ws === 'trainer' || ws === 'platform_admin') {
-      redirect(workspaceHash(ws, getLastPage(ws)));
-    } else {
-      redirect(workspaceHash('assessment', 'dashboard'));
-    }
-    return <FullScreenLoader />;
+    return <HomePage currentHash={hash} />;
   }
 
-  // ─── EIOS marketing pages (EIOS product only) ───────────────────────────────
-  if (product === 'eios' && (route.kind === 'home' || route.kind === 'about' || route.kind === 'features' ||
+  // ─── LLND Automate public website ───────────────────────────────────────────
+  if (product === 'llnd' && (route.kind === 'home' || route.kind === 'about' || route.kind === 'features' ||
       route.kind === 'how-it-works' || route.kind === 'resources' || route.kind === 'contact' ||
       route.kind === 'pricing' || route.kind === 'signup')) {
     if (route.kind === 'home')          return <HomePage currentHash={hash} />;
@@ -198,7 +190,7 @@ function Router() {
   if (route.kind === 'login' || route.kind === 'llnd-login' || route.kind === 'forgot-password') {
     if (user && otpVerified) {
       const redirectParam = parseRedirectParam(hash);
-      if (redirectParam && isSafeRedirect(redirectParam)) {
+      if (redirectParam && isSafeRedirect(redirectParam, product)) {
         redirect(redirectParam);
         return <FullScreenLoader />;
       }
@@ -226,18 +218,12 @@ function Router() {
 
   // ─── Auth gate for protected workspaces ─────────────────────────────────────
   if (!user || !otpVerified) {
-    // OAuth consent → EIOS login with continuation
-    if (route.kind === 'oauth-consent') {
-      const consentHash = hash.startsWith('#') ? hash : `#${hash}`;
-      redirect(`#/login?redirect=${encodeURIComponent(consentHash)}`);
-      return <FullScreenLoader />;
-    }
     // LLND Automate product routes → LLND Automate login
-    if (route.kind === 'assessment' || route.kind === 'trainer') {
+    if (route.kind === 'assessment' || route.kind === 'trainer' || route.kind === 'platform') {
       redirect('#/llnd-automate/login');
       return <FullScreenLoader />;
     }
-    // All other protected routes (engineering, platform admin, etc.) → EIOS login
+    // All other protected routes (engineering and OAuth) → EIOS login
     redirect('#/login');
     return <FullScreenLoader />;
   }
@@ -245,7 +231,7 @@ function Router() {
   // ─── Engineering workspace (EIOS product only) ──────────────────────────────
   if (route.kind === 'engineering') {
     if (product === 'llnd') {
-      // Engineering route under /llnd — reject to LLND fallback
+      // Engineering route at the LLND root — reject to an LLND fallback
       navigateInProduct('llnd', '#/assessment/dashboard');
       return <FullScreenLoader />;
     }
@@ -271,7 +257,7 @@ function Router() {
   // ─── Assessment workspace (LLND product only) ───────────────────────────────
   if (route.kind === 'assessment') {
     if (product === 'eios') {
-      // Assessment route under EIOS root — redirect to /llnd
+      // Assessment route under /eios — redirect to the LLND root product
       navigateInProduct('llnd', hash);
       return <FullScreenLoader />;
     }
@@ -311,10 +297,10 @@ function Router() {
     );
   }
 
-  // ─── Platform admin workspace (EIOS product only) ───────────────────────────
+  // ─── RTO administration workspace (LLND product only) ───────────────────────
   if (route.kind === 'platform') {
-    if (product === 'llnd') {
-      navigateInProduct('llnd', '#/assessment/dashboard');
+    if (product === 'eios') {
+      navigateInProduct('llnd', hash);
       return <FullScreenLoader />;
     }
     if (!hasWorkspace('platform_admin')) {
@@ -363,11 +349,14 @@ function isOAuthLoginContext(hash: string): boolean {
 }
 
 // Only allow internal hash-based redirects to prevent open redirect attacks.
-const SAFE_REDIRECT_PREFIXES = ['#/oauth/consent', '#/engineering', '#/platform', '#/assessment', '#/trainer'];
+const SAFE_REDIRECT_PREFIXES: Record<Product, string[]> = {
+  eios: ['#/oauth/consent', '#/engineering'],
+  llnd: ['#/platform', '#/assessment', '#/trainer'],
+};
 
-function isSafeRedirect(redirect: string): boolean {
+function isSafeRedirect(redirect: string, product: Product): boolean {
   if (!redirect.startsWith('#/')) return false;
-  return SAFE_REDIRECT_PREFIXES.some((prefix) => redirect.startsWith(prefix));
+  return SAFE_REDIRECT_PREFIXES[product].some((prefix) => redirect.startsWith(prefix));
 }
 
 // ─── Hash parser ──────────────────────────────────────────────────────────────
@@ -500,10 +489,9 @@ function primaryWorkspaceFor(profile: { role?: string } | null): CustomerWorkspa
 
 /**
  * Resolves the EIOS workspace for a signed-in user.
- * EIOS workspaces are 'engineering' (admin only) and 'platform_admin'.
- * LLND workspaces ('assessment', 'trainer') are never returned from EIOS context.
- * If the stored workspace is an LLND workspace or access is denied, falls back
- * to 'engineering' for admins or 'platform_admin' for non-admins.
+ * EIOS uses the engineering workspace for admins. The legacy platform_admin
+ * fallback is retained for non-admins so the product boundary can hand them
+ * safely into the LLND RTO Administration workspace.
  */
 function resolveEiosWorkspace(
   stored: AnyWorkspace,
@@ -516,9 +504,9 @@ function resolveEiosWorkspace(
     // Stored workspace might be an LLND workspace — fall back to engineering
     return 'engineering';
   }
-  // Non-admin: platform_admin is the only EIOS non-admin workspace
+  // Preserve the historical non-admin fallback. Because #/platform is an LLND
+  // route, boundary enforcement moves this navigation from /eios to the root.
   if (hasWorkspace('platform_admin')) return 'platform_admin';
-  // No EIOS workspace access — fall back to platform_admin as the safest EIOS route
   return 'platform_admin';
 }
 
