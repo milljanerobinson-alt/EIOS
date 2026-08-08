@@ -44,7 +44,7 @@ export function TopNav({ currentHash }: TopNavProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-6">
         {/* Logo */}
         <button
-          onClick={() => nav('#/')}
+          onClick={() => nav('#/home')}
           className="flex items-center gap-2.5 flex-shrink-0 group"
         >
           <div className="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center shadow-sm group-hover:bg-primary-700 transition-colors">
@@ -79,7 +79,7 @@ export function TopNav({ currentHash }: TopNavProps) {
         <div className="hidden lg:flex items-center gap-3 flex-shrink-0">
           {user ? (
             <button
-              onClick={() => nav('#/admin')}
+              onClick={() => nav('#/assessment/dashboard')}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 transition-all shadow-sm"
             >
               Open Dashboard <ChevronRight className="w-4 h-4" />
@@ -133,7 +133,7 @@ export function TopNav({ currentHash }: TopNavProps) {
           <div className="flex flex-col gap-2 pt-3 border-t border-slate-100">
             {user ? (
               <button
-                onClick={() => nav('#/admin')}
+                onClick={() => nav('#/assessment/dashboard')}
                 className="w-full py-3 rounded-xl bg-primary-600 text-white text-sm font-bold text-center"
               >
                 Open Dashboard

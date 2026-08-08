@@ -105,25 +105,26 @@ export function migrateLegacyLlnPaths(): void {
 
 /**
  * Returns true if a hash route belongs to EIOS product.
- * EIOS routes: engineering, platform, administration, login, oauth, root/marketing
+ * EIOS routes: engineering, EIOS login, OAuth, and the EIOS root.
  */
 export function isEiosRoute(hash: string): boolean {
   const h = hash.replace(/^#\/?/, '').split('?')[0];
   if (!h || h === '') return true;
   const first = h.split('/')[0];
-  return ['engineering', 'platform', 'administration', 'login', 'oauth',
-    'home', 'about', 'features', 'how-it-works', 'resources', 'contact',
-    'pricing', 'signup', 'forgot-password'].includes(first);
+  return ['engineering', 'administration', 'login', 'oauth'].includes(first);
 }
 
 /**
  * Returns true if a hash route belongs to LLND Automate product.
- * LLND routes: assessment, trainer, candidates, results, settings, llnd-automate
+ * LLND routes: public website, authentication, assessment, trainer, and RTO
+ * administration workspaces.
  */
 export function isLlndRoute(hash: string): boolean {
   const h = hash.replace(/^#\/?/, '').split('?')[0];
   if (!h || h === '') return false;
   const first = h.split('/')[0];
-  return ['assessment', 'trainer', 'candidates', 'results', 'settings',
-    'llnd-automate', 'lln', 'digital', 'quiz', 'student'].includes(first);
+  return ['home', 'about', 'features', 'how-it-works', 'resources', 'contact',
+    'pricing', 'signup', 'forgot-password', 'assessment', 'trainer', 'platform',
+    'candidates', 'results', 'settings', 'llnd-automate', 'lln', 'digital',
+    'quiz', 'student'].includes(first);
 }

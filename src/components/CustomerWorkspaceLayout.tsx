@@ -77,11 +77,11 @@ interface WorkspaceConfig {
 const WORKSPACE_CONFIGS: Record<CustomerWorkspace, WorkspaceConfig> = {
   assessment: {
     id: 'assessment',
-    label: 'Assessment Platform',
+    label: 'Candidate Assessment',
     sub: 'Operate the organisation',
     icon: GraduationCap,
     logoAccent: 'bg-primary-600',
-    logoText: 'Assessment Platform',
+    logoText: 'Candidate Assessment',
     activeItemBg: 'bg-primary-50',
     activeItemText: 'text-primary-700',
     activeIconColor: 'text-primary-600',
@@ -101,11 +101,11 @@ const WORKSPACE_CONFIGS: Record<CustomerWorkspace, WorkspaceConfig> = {
   },
   platform_admin: {
     id: 'platform_admin',
-    label: 'Platform Administration',
-    sub: 'Configure the platform',
+    label: 'RTO Administration',
+    sub: 'Configure your organisation',
     icon: Wrench,
     logoAccent: 'bg-slate-700',
-    logoText: 'Platform Administration',
+    logoText: 'RTO Administration',
     activeItemBg: 'bg-slate-100',
     activeItemText: 'text-slate-900',
     activeIconColor: 'text-slate-700',

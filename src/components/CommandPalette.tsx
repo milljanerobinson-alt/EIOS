@@ -10,6 +10,7 @@ import {
   GitMerge,
 } from 'lucide-react';
 import { type AnyWorkspace, workspaceHash, setLastWorkspace, setLastPage } from '../lib/workspaceAccess';
+import { navigateInProduct, resolveProduct } from '../lib/productContext';
 
 interface CommandEntry {
   workspace: AnyWorkspace;
@@ -21,17 +22,17 @@ interface CommandEntry {
 }
 
 const COMMANDS: CommandEntry[] = [
-  // Assessment Platform
-  { workspace: 'assessment', page: 'dashboard',          label: 'Dashboard',          group: 'Assessment Platform', icon: LayoutDashboard },
-  { workspace: 'assessment', page: 'assessments',        label: 'Assessments',        group: 'Assessment Platform', icon: FileText },
-  { workspace: 'assessment', page: 'qualifications',     label: 'Qualifications',     group: 'Assessment Platform', icon: Award },
-  { workspace: 'assessment', page: 'candidates',         label: 'Candidates',         group: 'Assessment Platform', icon: Users },
-  { workspace: 'assessment', page: 'results',            label: 'Results',            group: 'Assessment Platform', icon: BarChart3 },
-  { workspace: 'assessment', page: 'support-plans',      label: 'Support Plans',      group: 'Assessment Platform', icon: ClipboardList },
-  { workspace: 'assessment', page: 'interventions',      label: 'Interventions',      group: 'Assessment Platform', icon: AlertTriangle },
-  { workspace: 'assessment', page: 'compliance',         label: 'Compliance',         group: 'Assessment Platform', icon: ShieldCheck },
-  { workspace: 'assessment', page: 'acsf-evidence',      label: 'ACSF Evidence',      group: 'Assessment Platform', icon: Brain },
-  { workspace: 'assessment', page: 'audit-log',          label: 'Audit Log',          group: 'Assessment Platform', icon: ScrollText },
+  // Candidate Assessment
+  { workspace: 'assessment', page: 'dashboard',          label: 'Dashboard',          group: 'Candidate Assessment', icon: LayoutDashboard },
+  { workspace: 'assessment', page: 'assessments',        label: 'Assessments',        group: 'Candidate Assessment', icon: FileText },
+  { workspace: 'assessment', page: 'qualifications',     label: 'Qualifications',     group: 'Candidate Assessment', icon: Award },
+  { workspace: 'assessment', page: 'candidates',         label: 'Candidates',         group: 'Candidate Assessment', icon: Users },
+  { workspace: 'assessment', page: 'results',            label: 'Results',            group: 'Candidate Assessment', icon: BarChart3 },
+  { workspace: 'assessment', page: 'support-plans',      label: 'Support Plans',      group: 'Candidate Assessment', icon: ClipboardList },
+  { workspace: 'assessment', page: 'interventions',      label: 'Interventions',      group: 'Candidate Assessment', icon: AlertTriangle },
+  { workspace: 'assessment', page: 'compliance',         label: 'Compliance',         group: 'Candidate Assessment', icon: ShieldCheck },
+  { workspace: 'assessment', page: 'acsf-evidence',      label: 'ACSF Evidence',      group: 'Candidate Assessment', icon: Brain },
+  { workspace: 'assessment', page: 'audit-log',          label: 'Audit Log',          group: 'Candidate Assessment', icon: ScrollText },
 
   // Trainer Workspace
   { workspace: 'trainer', page: 'dashboard',             label: 'My Dashboard',       group: 'Trainer Workspace', icon: LayoutDashboard },
@@ -42,18 +43,18 @@ const COMMANDS: CommandEntry[] = [
   { workspace: 'trainer', page: 'results',               label: 'Results',            group: 'Trainer Workspace', icon: BarChart3 },
   { workspace: 'trainer', page: 'evidence',              label: 'Evidence',           group: 'Trainer Workspace', icon: BookOpen },
 
-  // Platform Administration
-  { workspace: 'platform_admin', page: 'dashboard',        label: 'Platform Overview',  group: 'Platform Administration', icon: LayoutDashboard },
-  { workspace: 'platform_admin', page: 'settings',         label: 'Organisation',       group: 'Platform Administration', icon: Globe },
-  { workspace: 'platform_admin', page: 'users',            label: 'Users & Access',     group: 'Platform Administration', icon: Users },
-  { workspace: 'platform_admin', page: 'billing',          label: 'Billing & Usage',    group: 'Platform Administration', icon: CreditCard },
-  { workspace: 'platform_admin', page: 'axcelerate-inbound', label: 'aXcelerate Sync', group: 'Platform Administration', icon: ArrowDownToLine },
-  { workspace: 'platform_admin', page: 'axcelerate-log',   label: 'aXcelerate Log',     group: 'Platform Administration', icon: Plug },
-  { workspace: 'platform_admin', page: 'email-activity',   label: 'Email Activity',     group: 'Platform Administration', icon: Mail },
-  { workspace: 'platform_admin', page: 'validation',       label: 'Validation',         group: 'Platform Administration', icon: CheckCircle2 },
-  { workspace: 'platform_admin', page: 'ai-providers',     label: 'AI Providers',       group: 'Platform Administration', icon: Zap },
-  { workspace: 'platform_admin', page: 'feature-flags',    label: 'Feature Flags',      group: 'Platform Administration', icon: Flag },
-  { workspace: 'platform_admin', page: 'system-health',    label: 'System Health',      group: 'Platform Administration', icon: Activity },
+  // RTO Administration
+  { workspace: 'platform_admin', page: 'dashboard',        label: 'Platform Overview',  group: 'RTO Administration', icon: LayoutDashboard },
+  { workspace: 'platform_admin', page: 'settings',         label: 'Organisation',       group: 'RTO Administration', icon: Globe },
+  { workspace: 'platform_admin', page: 'users',            label: 'Users & Access',     group: 'RTO Administration', icon: Users },
+  { workspace: 'platform_admin', page: 'billing',          label: 'Billing & Usage',    group: 'RTO Administration', icon: CreditCard },
+  { workspace: 'platform_admin', page: 'axcelerate-inbound', label: 'aXcelerate Sync', group: 'RTO Administration', icon: ArrowDownToLine },
+  { workspace: 'platform_admin', page: 'axcelerate-log',   label: 'aXcelerate Log',     group: 'RTO Administration', icon: Plug },
+  { workspace: 'platform_admin', page: 'email-activity',   label: 'Email Activity',     group: 'RTO Administration', icon: Mail },
+  { workspace: 'platform_admin', page: 'validation',       label: 'Validation',         group: 'RTO Administration', icon: CheckCircle2 },
+  { workspace: 'platform_admin', page: 'ai-providers',     label: 'AI Providers',       group: 'RTO Administration', icon: Zap },
+  { workspace: 'platform_admin', page: 'feature-flags',    label: 'Feature Flags',      group: 'RTO Administration', icon: Flag },
+  { workspace: 'platform_admin', page: 'system-health',    label: 'System Health',      group: 'RTO Administration', icon: Activity },
 
   // Engineering — AI Technical Director
   { workspace: 'engineering', page: 'mission-control', label: 'AI Technical Director', group: 'Engineering: Director', icon: Brain, keywords: 'ai director executive dashboard briefing' },
@@ -90,9 +91,9 @@ const COMMANDS: CommandEntry[] = [
 ];
 
 const WORKSPACE_ICONS: Record<string, typeof Brain> = {
-  'Assessment Platform': GraduationCap,
+  'Candidate Assessment': GraduationCap,
   'Trainer Workspace': UserCheck,
-  'Platform Administration': Wrench,
+  'RTO Administration': Wrench,
   'Engineering: Director': Brain,
   'Engineering: Product': Map,
   'Engineering: Build': Terminal,
@@ -118,8 +119,12 @@ export function CommandPalette({ isOpen, onClose, currentWorkspace }: CommandPal
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
+  const product = resolveProduct();
+  const productCommands = COMMANDS.filter(c => product === 'eios'
+    ? c.workspace === 'engineering'
+    : c.workspace !== 'engineering');
   const filtered = query.trim()
-    ? COMMANDS.filter(c => {
+    ? productCommands.filter(c => {
         const q = query.toLowerCase();
         return (
           c.label.toLowerCase().includes(q) ||
@@ -128,12 +133,12 @@ export function CommandPalette({ isOpen, onClose, currentWorkspace }: CommandPal
           c.workspace.includes(q)
         );
       })
-    : COMMANDS.filter(c => c.workspace === currentWorkspace);
+    : productCommands.filter(c => c.workspace === currentWorkspace);
 
   const navigate = useCallback((cmd: CommandEntry) => {
     setLastWorkspace(cmd.workspace);
     setLastPage(cmd.workspace, cmd.page);
-    window.location.hash = workspaceHash(cmd.workspace, cmd.page);
+    navigateInProduct(cmd.workspace === 'engineering' ? 'eios' : 'llnd', workspaceHash(cmd.workspace, cmd.page));
     onClose();
   }, [onClose]);
 

@@ -42,7 +42,7 @@ export function ContactPage({ currentHash }: { currentHash: string }) {
                 </div>
                 <h2 className="text-2xl font-bold text-slate-900">Message sent!</h2>
                 <p className="text-slate-500 max-w-xs">Thanks for reaching out. We'll be in touch within one business day.</p>
-                <button onClick={() => nav('#/')} className="mt-4 text-primary-600 font-semibold hover:text-primary-800 flex items-center gap-1">
+                <button onClick={() => nav('#/home')} className="mt-4 text-primary-600 font-semibold hover:text-primary-800 flex items-center gap-1">
                   Back to home <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
